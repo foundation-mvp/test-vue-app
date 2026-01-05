@@ -4,7 +4,7 @@ import vue from '@vitejs/plugin-vue'
 export default defineConfig(({ mode }) => ({
   plugins: [vue()],
   // Base path for S3 subfolder deployment (only in production)
-  base: mode === 'production' ? '/vue-example/' : '/',
+  base:'./',
   build: {
     outDir: 'dist',
     // Single file output for easy deployment
