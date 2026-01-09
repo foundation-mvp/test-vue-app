@@ -17,6 +17,7 @@
       <div class="info-row">
         <span class="label">Name:</span>
         <code>{{ selectedFile.name }}</code>
+        <span v-if="selectedFile.originalName !== selectedFile.name" class="name-note">(sanitized)</span>
       </div>
       <div class="info-row">
         <span class="label">Content Type:</span>
@@ -91,32 +92,22 @@ const rawFile = ref(null)
 async function computeSHA256(file) {
   const arrayBuffer = await file.arrayBuffer()
   const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  const hashBase32 = base32Encode(hashArray)
-  return hashBase32
+  const hashArray = new Uint8Array(hashBuffer)
+  // Safer conversion that doesn't use spread operator
+  let binary = ''
+  hashArray.forEach(byte => binary += String.fromCharCode(byte))
+  // URL-safe Base64: replace + with -, / with _ (keep = padding for 44 char length)
+  const base64 = btoa(binary)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+  console.log('SHA-256 length:', base64.length, 'value:', base64)
+  return base64
 }
 
-function base32Encode(bytes) {
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
-  let result = ''
-  let bits = 0
-  let value = 0
-
-  for (const byte of bytes) {
-    value = (value << 8) | byte
-    bits += 8
-
-    while (bits >= 5) {
-      bits -= 5
-      result += alphabet[(value >>> bits) & 0x1f]
-    }
-  }
-
-  if (bits > 0) {
-    result += alphabet[(value << (5 - bits)) & 0x1f]
-  }
-
-  return result
+function sanitizeFileName(name) {
+  // Replace spaces and invalid characters with underscores
+  // Allowed: a-zA-Z0-9!#$%&'*+.^_`|~-
+  return name.replace(/[^a-zA-Z0-9!#$%&'*+.^_`|~\-]/g, '_')
 }
 
 async function handleFileSelect(event) {
@@ -132,7 +123,8 @@ async function handleFileSelect(event) {
   uploadResult.value = null
 
   selectedFile.value = {
-    name: file.name,
+    name: sanitizeFileName(file.name),
+    originalName: file.name,
     contentType: file.type || 'application/octet-stream',
     contentLength: file.size,
     sha256: null
@@ -245,6 +237,12 @@ async function initiateUpload() {
 .sha256 {
   word-break: break-all;
   font-size: 0.65rem !important;
+}
+
+.name-note {
+  font-size: 0.75rem;
+  color: var(--warning, #f59e0b);
+  margin-left: 0.5rem;
 }
 
 button.secondary {

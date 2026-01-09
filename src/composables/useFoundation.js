@@ -85,6 +85,10 @@ export function useFoundation() {
     storage: client.storage,
     log: client.log,
 
+    // Theme control methods
+    setTheme: (mode) => client.theme.setTheme(mode),
+    toggleTheme: () => client.theme.toggle(),
+
     // Entity change subscription
     onEntityChange: client.onEntityChange
   }
