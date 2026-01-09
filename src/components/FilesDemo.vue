@@ -34,9 +34,9 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useSdk } from '../composables/useSdk'
+import { useFoundation } from '../composables/useFoundation'
 
-const sdk = useSdk()
+const { files: filesService } = useFoundation()
 const loading = ref(false)
 const error = ref(null)
 const files = ref([])
@@ -47,7 +47,7 @@ async function listFiles() {
   error.value = null
   uploadResult.value = null
   try {
-    const result = await sdk.files.list({ limit: 10 })
+    const result = await filesService.list({ limit: 10 })
     files.value = result?.items || []
   } catch (e) {
     error.value = e.message
@@ -61,7 +61,7 @@ async function initiateUpload() {
   error.value = null
   files.value = []
   try {
-    const result = await sdk.files.initiate({
+    const result = await filesService.initiate({
       name: 'test-file.txt',
       contentType: 'text/plain',
       contentLength: 1024

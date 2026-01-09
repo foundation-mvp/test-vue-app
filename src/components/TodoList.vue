@@ -58,9 +58,9 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useSdk } from '../composables/useSdk'
+import { useFoundation } from '../composables/useFoundation'
 
-const sdk = useSdk()
+const { db, ui, log } = useFoundation()
 
 const todos = ref([])
 const newTitle = ref('')
@@ -73,11 +73,11 @@ async function loadTodos() {
   error.value = null
 
   try {
-    const result = await sdk.db.list('todos', { limit: 50 })
+    const result = await db.list('todos', { limit: 50 })
     todos.value = result?.items || []
   } catch (e) {
     error.value = `Failed to load todos: ${e.message}`
-    sdk.log.error('Failed to load todos', { error: e.message })
+    log.error('Failed to load todos', { error: e.message })
   } finally {
     loading.value = false
   }
@@ -96,15 +96,15 @@ async function addTodo() {
       createdAt: new Date().toISOString()
     }
 
-    const result = await sdk.db.create('todos', todo)
+    const result = await db.create('todos', todo)
     todos.value.unshift({ ...todo, id: result?.id })
     newTitle.value = ''
 
-    sdk.ui.toast('Todo added!', 'success')
-    sdk.log.event('todo_created', { title: todo.title })
+    ui.toast('Todo added!', 'success')
+    log.event('todo_created', { title: todo.title })
   } catch (e) {
     error.value = `Failed to add todo: ${e.message}`
-    sdk.ui.toast('Failed to add todo', 'error')
+    ui.toast('Failed to add todo', 'error')
   } finally {
     adding.value = false
   }
@@ -115,32 +115,32 @@ async function toggleTodo(todo) {
   todo.done = newDone // Optimistic update
 
   try {
-    await sdk.db.update('todos', todo.id, {
+    await db.update('todos', todo.id, {
       done: newDone,
       updatedAt: new Date().toISOString()
     })
 
-    sdk.log.event('todo_toggled', { id: todo.id, done: newDone })
+    log.event('todo_toggled', { id: todo.id, done: newDone })
   } catch (e) {
     todo.done = !newDone // Revert
-    sdk.ui.toast('Failed to update todo', 'error')
+    ui.toast('Failed to update todo', 'error')
   }
 }
 
 async function deleteTodo(todo) {
-  const confirmed = await sdk.ui.confirm(`Delete "${todo.title}"?`)
+  const confirmed = await ui.confirm(`Delete "${todo.title}"?`)
   if (!confirmed?.confirmed) return
 
   const idx = todos.value.indexOf(todo)
   todos.value.splice(idx, 1) // Optimistic
 
   try {
-    await sdk.db.delete('todos', todo.id)
-    sdk.ui.toast('Todo deleted', 'success')
-    sdk.log.event('todo_deleted', { id: todo.id })
+    await db.delete('todos', todo.id)
+    ui.toast('Todo deleted', 'success')
+    log.event('todo_deleted', { id: todo.id })
   } catch (e) {
     todos.value.splice(idx, 0, todo) // Revert
-    sdk.ui.toast('Failed to delete todo', 'error')
+    ui.toast('Failed to delete todo', 'error')
   }
 }
 

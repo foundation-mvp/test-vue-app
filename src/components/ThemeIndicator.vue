@@ -1,14 +1,14 @@
 <template>
   <div class="theme-indicator">
-    <span class="icon">{{ sdk.isDark ? '🌙' : '☀️' }}</span>
-    <span class="label">{{ sdk.themeMode }}</span>
+    <span class="icon">{{ isDark ? '🌙' : '☀️' }}</span>
+    <span class="label">{{ themeMode }}</span>
   </div>
 </template>
 
 <script setup>
-import { useSdk } from '../composables/useSdk'
+import { useFoundation } from '../composables/useFoundation'
 
-const sdk = useSdk()
+const { isDark, themeMode } = useFoundation()
 </script>
 
 <style scoped>

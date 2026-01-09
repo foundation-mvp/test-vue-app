@@ -31,9 +31,9 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useSdk } from '../composables/useSdk'
+import { useFoundation } from '../composables/useFoundation'
 
-const sdk = useSdk()
+const { ui } = useFoundation()
 const lastResult = ref(null)
 
 async function showToast(type) {
@@ -44,21 +44,21 @@ async function showToast(type) {
     error: 'Something went wrong!'
   }
 
-  await sdk.ui.toast(messages[type], type)
+  await ui.toast(messages[type], type)
   lastResult.value = `Toast shown: ${type}`
 }
 
 async function showConfirm() {
-  const result = await sdk.ui.confirm('Are you sure you want to proceed?')
+  const result = await ui.confirm('Are you sure you want to proceed?')
   lastResult.value = `Confirmed: ${result?.confirmed ? 'Yes' : 'No'}`
 }
 
 async function showLoading() {
-  await sdk.ui.loading.show('Processing your request...')
+  await ui.loading.show('Processing your request...')
   lastResult.value = 'Loading shown'
 
   setTimeout(async () => {
-    await sdk.ui.loading.hide()
+    await ui.loading.hide()
     lastResult.value = 'Loading hidden'
   }, 2000)
 }

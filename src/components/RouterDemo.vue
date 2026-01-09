@@ -6,15 +6,15 @@
     <div class="current-route">
       <div class="route-item">
         <span class="label">Path:</span>
-        <code>{{ sdk.router.path }}</code>
+        <code>{{ routerPath }}</code>
       </div>
       <div class="route-item">
         <span class="label">Query:</span>
-        <code>{{ JSON.stringify(sdk.router.query) }}</code>
+        <code>{{ JSON.stringify(routerQuery) }}</code>
       </div>
       <div class="route-item">
         <span class="label">Hash:</span>
-        <code>{{ sdk.router.hash || '(none)' }}</code>
+        <code>{{ routerHash || '(none)' }}</code>
       </div>
     </div>
 
@@ -33,15 +33,15 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { useSdk } from '../composables/useSdk'
+import { useFoundation } from '../composables/useFoundation'
 
-const sdk = useSdk()
+const { router, routerPath, routerQuery, routerHash } = useFoundation()
 const lastAction = ref('')
 
 let unsubscribe = null
 
 onMounted(() => {
-  unsubscribe = sdk.onRouterChange((route) => {
+  unsubscribe = router.onChange((route) => {
     lastAction.value = `Route changed to: ${route.path}`
   })
 })
@@ -53,7 +53,7 @@ onUnmounted(() => {
 async function pushDemo() {
   try {
     const id = Date.now().toString(36)
-    await sdk.router.push(`/demo/${id}`)
+    await router.push(`/demo/${id}`)
     lastAction.value = `Pushed /demo/${id}`
   } catch (e) {
     lastAction.value = `Error: ${e.message}`
@@ -62,7 +62,7 @@ async function pushDemo() {
 
 async function pushWithQuery() {
   try {
-    await sdk.router.push('/tasks', { query: { filter: 'active', page: '1' } })
+    await router.push('/tasks', { query: { filter: 'active', page: '1' } })
     lastAction.value = 'Pushed /tasks with query'
   } catch (e) {
     lastAction.value = `Error: ${e.message}`
@@ -71,7 +71,7 @@ async function pushWithQuery() {
 
 async function replaceHome() {
   try {
-    await sdk.router.replace('/home')
+    await router.replace('/home')
     lastAction.value = 'Replaced with /home (no history)'
   } catch (e) {
     lastAction.value = `Error: ${e.message}`
@@ -80,7 +80,7 @@ async function replaceHome() {
 
 async function setQueryParams() {
   try {
-    await sdk.router.setQuery({ status: 'completed', sort: 'date' })
+    await router.setQuery({ status: 'completed', sort: 'date' })
     lastAction.value = 'Set query params'
   } catch (e) {
     lastAction.value = `Error: ${e.message}`
