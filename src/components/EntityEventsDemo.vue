@@ -27,7 +27,7 @@
 
 <script setup>
 import { ref, onUnmounted } from 'vue'
-import { useFoundation } from '../composables/useFoundation'
+import { useFoundation } from 'foundation-sdk/vue'
 
 const { onEntityChange } = useFoundation()
 const listening = ref(false)

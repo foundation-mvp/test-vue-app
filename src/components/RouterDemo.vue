@@ -33,7 +33,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { useFoundation } from '../composables/useFoundation'
+import { useFoundation } from 'foundation-sdk/vue'
 
 const { router, routerPath, routerQuery, routerHash } = useFoundation()
 const lastAction = ref('')

@@ -58,7 +58,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useFoundation } from '../composables/useFoundation'
+import { useFoundation } from 'foundation-sdk/vue'
 
 const { db, ui, log } = useFoundation()
 

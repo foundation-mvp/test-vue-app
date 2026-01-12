@@ -31,7 +31,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useFoundation } from '../composables/useFoundation'
+import { useFoundation } from 'foundation-sdk/vue'
 
 const { ui } = useFoundation()
 const lastResult = ref(null)

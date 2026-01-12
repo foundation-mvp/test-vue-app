@@ -23,7 +23,7 @@
 </template>
 
 <script setup>
-import { useFoundation } from '../composables/useFoundation'
+import { useFoundation } from 'foundation-sdk/vue'
 
 const { isDark, themeMode, setTheme, toggleTheme } = useFoundation()
 

@@ -78,7 +78,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useFoundation } from '../composables/useFoundation'
+import { useFoundation } from 'foundation-sdk/vue'
 
 const { files: filesService } = useFoundation()
 const loading = ref(false)

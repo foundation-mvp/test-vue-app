@@ -49,7 +49,7 @@
 </template>
 
 <script setup>
-import { useFoundation } from './composables/useFoundation'
+import { useFoundation } from 'foundation-sdk/vue'
 import ThemeIndicator from './components/ThemeIndicator.vue'
 import UserMenu from './components/UserMenu.vue'
 import TodoList from './components/TodoList.vue'
