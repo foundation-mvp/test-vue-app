@@ -4,7 +4,7 @@
  * Provides Vue reactivity around the framework-agnostic SDK client.
  */
 import { ref, readonly, shallowRef } from 'vue'
-import { createFoundationClient } from 'foundation-iframe-sdk'
+import { createFoundationClient } from 'foundation-sdk'
 
 // Singleton client
 const client = createFoundationClient()
