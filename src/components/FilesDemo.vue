@@ -93,13 +93,10 @@ async function computeSHA256(file) {
   const arrayBuffer = await file.arrayBuffer()
   const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer)
   const hashArray = new Uint8Array(hashBuffer)
-  // Safer conversion that doesn't use spread operator
   let binary = ''
   hashArray.forEach(byte => binary += String.fromCharCode(byte))
-  // URL-safe Base64: replace + with -, / with _ (keep = padding for 44 char length)
+  // Standard Base64 (not URL-safe) - S3 expects this format for integrity checks
   const base64 = btoa(binary)
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
   console.log('SHA-256 length:', base64.length, 'value:', base64)
   return base64
 }
