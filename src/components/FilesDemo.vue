@@ -195,32 +195,41 @@ async function initiateUpload() {
 
     // Step 2: Upload to S3 using presigned POST
     const formData = new FormData()
+    const { signedData } = result
 
-    // Append all signed fields first (order matters for S3 presigned POST)
-    // The 'file' field must be last
-    const { signedData, signedUrl } = result
+    // Build virtual-hosted style S3 URL (bucket.s3.region.amazonaws.com)
+    const bucket = signedData.bucket
+    const s3Url = `https://${bucket}.s3.us-west-2.amazonaws.com`
 
-    // Add fields in the order S3 expects
-    if (signedData.key) formData.append('key', signedData.key)
-    if (signedData['Content-Type']) formData.append('Content-Type', signedData['Content-Type'])
-    if (signedData['Content-Length']) formData.append('Content-Length', signedData['Content-Length'])
-    if (signedData['x-amz-checksum-sha256']) formData.append('x-amz-checksum-sha256', signedData['x-amz-checksum-sha256'])
-    if (signedData['x-amz-meta-coreUploadId']) formData.append('x-amz-meta-coreUploadId', signedData['x-amz-meta-coreUploadId'])
-    if (signedData['x-amz-meta-originalUploadName']) formData.append('x-amz-meta-originalUploadName', signedData['x-amz-meta-originalUploadName'])
-    if (signedData.bucket) formData.append('bucket', signedData.bucket)
-    if (signedData['X-Amz-Algorithm']) formData.append('X-Amz-Algorithm', signedData['X-Amz-Algorithm'])
-    if (signedData['X-Amz-Credential']) formData.append('X-Amz-Credential', signedData['X-Amz-Credential'])
-    if (signedData['X-Amz-Date']) formData.append('X-Amz-Date', signedData['X-Amz-Date'])
-    if (signedData['X-Amz-Security-Token']) formData.append('X-Amz-Security-Token', signedData['X-Amz-Security-Token'])
-    if (signedData.Policy) formData.append('Policy', signedData.Policy)
-    if (signedData['X-Amz-Signature']) formData.append('X-Amz-Signature', signedData['X-Amz-Signature'])
+    // Add fields in the exact order that works with S3
+    const fieldOrder = [
+      'key',
+      'bucket',
+      'X-Amz-Algorithm',
+      'X-Amz-Credential',
+      'X-Amz-Date',
+      'X-Amz-Security-Token',
+      'Policy',
+      'X-Amz-Signature',
+      'x-amz-meta-coreUploadId',
+      'x-amz-meta-originalUploadName',
+      'Content-Type',
+      'Content-Length',
+      'x-amz-checksum-sha256'
+    ]
+
+    for (const field of fieldOrder) {
+      if (signedData[field]) {
+        formData.append(field, signedData[field])
+      }
+    }
 
     // File must be appended last
     formData.append('file', rawFile.value)
 
-    console.log('Uploading to S3:', signedUrl)
+    console.log('Uploading to S3:', s3Url)
 
-    const s3Response = await fetch(signedUrl, {
+    const s3Response = await fetch(s3Url, {
       method: 'POST',
       body: formData
     })
