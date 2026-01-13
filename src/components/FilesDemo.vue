@@ -55,14 +55,20 @@
       <div v-if="loading" class="empty">Loading...</div>
       <div v-else-if="error" class="error">{{ error }}</div>
       <div v-else-if="uploadResult" class="upload-result">
-        <h4>Upload Initiated</h4>
+        <h4>{{ uploadResult.s3UploadComplete ? 'Upload Complete!' : 'Upload Initiated' }}</h4>
         <div class="info-row">
           <span class="label">File ID:</span>
           <code>{{ uploadResult.id || 'N/A' }}</code>
         </div>
         <div class="info-row">
-          <span class="label">Signed URL:</span>
-          <code>{{ uploadResult.signedUrl ? 'Received' : 'N/A' }}</code>
+          <span class="label">Status:</span>
+          <code :class="uploadResult.s3UploadComplete ? 'success' : ''">
+            {{ uploadResult.s3UploadComplete ? 'Uploaded to S3' : uploadResult.status }}
+          </code>
+        </div>
+        <div class="info-row">
+          <span class="label">S3 Key:</span>
+          <code class="sha256">{{ uploadResult.signedData?.key || 'N/A' }}</code>
         </div>
       </div>
       <div v-else-if="files.length > 0" class="files-list">
@@ -160,7 +166,7 @@ async function listFiles() {
 }
 
 async function initiateUpload() {
-  if (!selectedFile.value || !selectedFile.value.sha256) {
+  if (!selectedFile.value || !selectedFile.value.sha256 || !rawFile.value) {
     error.value = 'Please select a file first'
     return
   }
@@ -179,10 +185,57 @@ async function initiateUpload() {
   console.log('Initiating upload with payload:', payload)
 
   try {
-    const result = await filesService.initiate(payload)
-    uploadResult.value = result
+    // Step 1: Get presigned URL and signed data
+    const { data: result } = await filesService.initiate(payload)
+    console.log('Initiate response:', result)
+
+    if (!result.signedUrl || !result.signedData) {
+      throw new Error('Missing signedUrl or signedData in response')
+    }
+
+    // Step 2: Upload to S3 using presigned POST
+    const formData = new FormData()
+
+    // Append all signed fields first (order matters for S3 presigned POST)
+    // The 'file' field must be last
+    const { signedData, signedUrl } = result
+
+    // Add fields in the order S3 expects
+    if (signedData.key) formData.append('key', signedData.key)
+    if (signedData['Content-Type']) formData.append('Content-Type', signedData['Content-Type'])
+    if (signedData['Content-Length']) formData.append('Content-Length', signedData['Content-Length'])
+    if (signedData['x-amz-checksum-sha256']) formData.append('x-amz-checksum-sha256', signedData['x-amz-checksum-sha256'])
+    if (signedData['x-amz-meta-coreUploadId']) formData.append('x-amz-meta-coreUploadId', signedData['x-amz-meta-coreUploadId'])
+    if (signedData['x-amz-meta-originalUploadName']) formData.append('x-amz-meta-originalUploadName', signedData['x-amz-meta-originalUploadName'])
+    if (signedData.bucket) formData.append('bucket', signedData.bucket)
+    if (signedData['X-Amz-Algorithm']) formData.append('X-Amz-Algorithm', signedData['X-Amz-Algorithm'])
+    if (signedData['X-Amz-Credential']) formData.append('X-Amz-Credential', signedData['X-Amz-Credential'])
+    if (signedData['X-Amz-Date']) formData.append('X-Amz-Date', signedData['X-Amz-Date'])
+    if (signedData['X-Amz-Security-Token']) formData.append('X-Amz-Security-Token', signedData['X-Amz-Security-Token'])
+    if (signedData.Policy) formData.append('Policy', signedData.Policy)
+    if (signedData['X-Amz-Signature']) formData.append('X-Amz-Signature', signedData['X-Amz-Signature'])
+
+    // File must be appended last
+    formData.append('file', rawFile.value)
+
+    console.log('Uploading to S3:', signedUrl)
+
+    const s3Response = await fetch(signedUrl, {
+      method: 'POST',
+      body: formData
+    })
+
+    if (!s3Response.ok) {
+      const errorText = await s3Response.text()
+      console.error('S3 upload failed:', s3Response.status, errorText)
+      throw new Error(`S3 upload failed: ${s3Response.status} - ${errorText}`)
+    }
+
+    console.log('S3 upload successful!')
+    uploadResult.value = { ...result, s3UploadComplete: true }
   } catch (e) {
     error.value = e.message
+    console.error('Upload error:', e)
   } finally {
     loading.value = false
   }
@@ -256,6 +309,11 @@ button.secondary:hover {
   margin: 0 0 0.5rem 0;
   font-size: 0.875rem;
   color: var(--success);
+}
+
+code.success {
+  color: var(--success);
+  font-weight: 600;
 }
 
 .actions {
