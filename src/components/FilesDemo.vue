@@ -175,73 +175,19 @@ async function initiateUpload() {
   error.value = null
   files.value = []
 
-  const payload = {
-    name: selectedFile.value.name,
-    contentType: selectedFile.value.contentType,
-    contentLength: selectedFile.value.contentLength,
-    sha256: selectedFile.value.sha256
-  }
-
-  console.log('Initiating upload with payload:', payload)
+  console.log('Uploading file via parent:', selectedFile.value.name)
 
   try {
-    // Step 1: Get presigned URL and signed data
-    const { data: result } = await filesService.initiate(payload)
-    console.log('Initiate response:', result)
-
-    if (!result.signedUrl || !result.signedData) {
-      throw new Error('Missing signedUrl or signedData in response')
-    }
-
-    // Step 2: Upload to S3 using presigned POST
-    const formData = new FormData()
-    const { signedData } = result
-
-    // Build virtual-hosted style S3 URL (bucket.s3.region.amazonaws.com)
-    const bucket = signedData.bucket
-    const s3Url = `https://${bucket}.s3.us-west-2.amazonaws.com`
-
-    // Add fields in the exact order that works with S3
-    const fieldOrder = [
-      'key',
-      'bucket',
-      'X-Amz-Algorithm',
-      'X-Amz-Credential',
-      'X-Amz-Date',
-      'X-Amz-Security-Token',
-      'Policy',
-      'X-Amz-Signature',
-      'x-amz-meta-coreUploadId',
-      'x-amz-meta-originalUploadName',
-      'Content-Type',
-      'Content-Length',
-      'x-amz-checksum-sha256'
-    ]
-
-    for (const field of fieldOrder) {
-      if (signedData[field]) {
-        formData.append(field, signedData[field])
-      }
-    }
-
-    // File must be appended last
-    formData.append('file', rawFile.value)
-
-    console.log('Uploading to S3:', s3Url)
-
-    const s3Response = await fetch(s3Url, {
-      method: 'POST',
-      body: formData
+    // Upload through parent container (handles presigned URL + S3 upload)
+    const result = await filesService.upload({
+      name: selectedFile.value.name,
+      contentType: selectedFile.value.contentType,
+      file: rawFile.value,
+      sha256: selectedFile.value.sha256
     })
 
-    if (!s3Response.ok) {
-      const errorText = await s3Response.text()
-      console.error('S3 upload failed:', s3Response.status, errorText)
-      throw new Error(`S3 upload failed: ${s3Response.status} - ${errorText}`)
-    }
-
-    console.log('S3 upload successful!')
-    uploadResult.value = { ...result, s3UploadComplete: true }
+    console.log('Upload complete:', result)
+    uploadResult.value = result
   } catch (e) {
     error.value = e.message
     console.error('Upload error:', e)
