@@ -1,24 +1,24 @@
 <template>
   <div class="user-menu">
     <img
-      v-if="sdk.currentUser?.picture"
-      :src="sdk.currentUser.picture"
+      v-if="user?.picture"
+      :src="user.picture"
       class="avatar"
       @error="(e) => e.target.style.display = 'none'"
     />
-    <span class="name">{{ sdk.currentUser?.email || 'User' }}</span>
+    <span class="name">{{ user?.email || 'User' }}</span>
     <button class="ghost" @click="handleLogout">Logout</button>
   </div>
 </template>
 
 <script setup>
-import { useSdk } from '../composables/useSdk'
+import { useFoundation } from 'foundation-sdk/vue'
 
-const sdk = useSdk()
+const { user, auth } = useFoundation()
 
 async function handleLogout() {
   try {
-    await sdk.auth.logout()
+    await auth.logout()
   } catch (e) {
     console.error('Logout failed:', e)
   }

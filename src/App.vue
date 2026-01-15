@@ -1,5 +1,5 @@
 <template>
-  <div class="app" :class="{ dark: sdk.isDark }">
+  <div class="app" :class="{ dark: foundation.isDark.value }">
     <header class="header">
       <h1>My Vue App</h1>
       <div class="header-right">
@@ -9,14 +9,15 @@
     </header>
 
     <main class="main">
-      <div v-if="!sdk.isReady" class="loading">
+      <div v-if="!foundation.isReady.value" class="loading">
         Connecting to platform...
       </div>
 
       <template v-else>
         <section class="section">
-          <h2>Welcome, {{ sdk.currentUser?.name || sdk.currentUser?.email || 'User' }}</h2>
+          <h2>Welcome, {{ foundation.currentUser?.name || foundation.currentUser?.email || 'User' }}</h2>
           <p class="muted">This Vue app uses the Foundation SDK for auth, data, and UI.</p>
+          <pre class="user-data">{{ JSON.stringify(foundation.currentUser, null, 2) }}</pre>
         </section>
 
         <section class="section">
@@ -48,8 +49,7 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
-import { initSdk, useSdk } from './composables/useSdk'
+import { useFoundation } from 'foundation-sdk/vue'
 import ThemeIndicator from './components/ThemeIndicator.vue'
 import UserMenu from './components/UserMenu.vue'
 import TodoList from './components/TodoList.vue'
@@ -59,11 +59,7 @@ import BannerDemo from './components/BannerDemo.vue'
 import EntityEventsDemo from './components/EntityEventsDemo.vue'
 import FilesDemo from './components/FilesDemo.vue'
 
-const sdk = useSdk()
-
-onMounted(() => {
-  initSdk()
-})
+const foundation = useFoundation()
 </script>
 
 <style>
@@ -191,5 +187,15 @@ button.ghost {
 }
 button.ghost:hover {
   background: var(--border);
+}
+
+.user-data {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  overflow-x: auto;
 }
 </style>

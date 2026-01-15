@@ -58,9 +58,22 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useSdk } from '../composables/useSdk'
+import { useFoundation } from 'foundation-sdk/vue'
 
-const sdk = useSdk()
+const { stuff, ui, log } = useFoundation()
+
+// Simple nanoid-like generator
+function nanoid(size = 21) {
+  const alphabet = 'useandom-26T198340PX75pxJACKVERYMINDBUSHWOLF_GQZbfghjklqvwyzrict'
+  let id = ''
+  const bytes = crypto.getRandomValues(new Uint8Array(size))
+  for (let i = 0; i < size; i++) {
+    id += alphabet[bytes[i] & 63]
+  }
+  return id
+}
+
+const TODO_KEY = 'todos'
 
 const todos = ref([])
 const newTitle = ref('')
@@ -73,11 +86,16 @@ async function loadTodos() {
   error.value = null
 
   try {
-    const result = await sdk.db.list('todos', { limit: 50 })
-    todos.value = result?.items || []
+    const result = await stuff.list(TODO_KEY)
+    // Map stuff items to todo format
+    todos.value = (result || []).map(item => ({
+      id: item.namespace,
+      title: item.value?.title || '',
+      done: item.value?.completed || false
+    }))
   } catch (e) {
     error.value = `Failed to load todos: ${e.message}`
-    sdk.log.error('Failed to load todos', { error: e.message })
+    log.error('Failed to load todos', { error: e.message })
   } finally {
     loading.value = false
   }
@@ -89,22 +107,26 @@ async function addTodo() {
   adding.value = true
   error.value = null
 
-  try {
-    const todo = {
-      title: newTitle.value.trim(),
-      done: false,
-      createdAt: new Date().toISOString()
-    }
+  const namespace = nanoid()
+  const todoValue = {
+    title: newTitle.value.trim(),
+    completed: false
+  }
 
-    const result = await sdk.db.create('todos', todo)
-    todos.value.unshift({ ...todo, id: result?.id })
+  try {
+    await stuff.set(TODO_KEY, namespace, todoValue)
+    todos.value.unshift({
+      id: namespace,
+      title: todoValue.title,
+      done: todoValue.completed
+    })
     newTitle.value = ''
 
-    sdk.ui.toast('Todo added!', 'success')
-    sdk.log.event('todo_created', { title: todo.title })
+    ui.toast('Todo added!', 'success')
+    log.event('todo_created', { title: todoValue.title })
   } catch (e) {
     error.value = `Failed to add todo: ${e.message}`
-    sdk.ui.toast('Failed to add todo', 'error')
+    ui.toast('Failed to add todo', 'error')
   } finally {
     adding.value = false
   }
@@ -115,32 +137,32 @@ async function toggleTodo(todo) {
   todo.done = newDone // Optimistic update
 
   try {
-    await sdk.db.update('todos', todo.id, {
-      done: newDone,
-      updatedAt: new Date().toISOString()
+    await stuff.set(TODO_KEY, todo.id, {
+      title: todo.title,
+      completed: newDone
     })
 
-    sdk.log.event('todo_toggled', { id: todo.id, done: newDone })
+    log.event('todo_toggled', { id: todo.id, done: newDone })
   } catch (e) {
     todo.done = !newDone // Revert
-    sdk.ui.toast('Failed to update todo', 'error')
+    ui.toast('Failed to update todo', 'error')
   }
 }
 
 async function deleteTodo(todo) {
-  const confirmed = await sdk.ui.confirm(`Delete "${todo.title}"?`)
+  const confirmed = await ui.confirm(`Delete "${todo.title}"?`)
   if (!confirmed?.confirmed) return
 
   const idx = todos.value.indexOf(todo)
   todos.value.splice(idx, 1) // Optimistic
 
   try {
-    await sdk.db.delete('todos', todo.id)
-    sdk.ui.toast('Todo deleted', 'success')
-    sdk.log.event('todo_deleted', { id: todo.id })
+    await stuff.delete(TODO_KEY, todo.id)
+    ui.toast('Todo deleted', 'success')
+    log.event('todo_deleted', { id: todo.id })
   } catch (e) {
     todos.value.splice(idx, 0, todo) // Revert
-    sdk.ui.toast('Failed to delete todo', 'error')
+    ui.toast('Failed to delete todo', 'error')
   }
 }
 

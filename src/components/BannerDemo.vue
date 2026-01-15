@@ -19,9 +19,9 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useSdk } from '../composables/useSdk'
+import { useFoundation } from 'foundation-sdk/vue'
 
-const sdk = useSdk()
+const { ui } = useFoundation()
 const lastBannerId = ref(null)
 
 const messages = {
@@ -33,7 +33,7 @@ const messages = {
 
 async function showBanner(type) {
   try {
-    const result = await sdk.ui.banner.show(messages[type], { type, dismissible: true })
+    const result = await ui.banner.show(messages[type], { type, dismissible: true })
     lastBannerId.value = result?.bannerId
   } catch (e) {
     console.error('Banner error:', e)

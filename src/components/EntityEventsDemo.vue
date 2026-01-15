@@ -26,10 +26,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useSdk } from '../composables/useSdk'
+import { ref, onUnmounted } from 'vue'
+import { useFoundation } from 'foundation-sdk/vue'
 
-const sdk = useSdk()
+const { onEntityChange } = useFoundation()
 const listening = ref(false)
 const events = ref([])
 let unsubscribe = null
@@ -42,7 +42,7 @@ function toggleListener() {
     }
     listening.value = false
   } else {
-    unsubscribe = sdk.onEntityChange((event) => {
+    unsubscribe = onEntityChange((event) => {
       events.value.unshift(event)
       // Keep only last 10 events
       if (events.value.length > 10) {

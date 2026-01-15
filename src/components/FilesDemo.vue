@@ -3,22 +3,72 @@
     <h3>Files (Presigned Upload)</h3>
     <p class="description">Initiate uploads and get presigned URLs</p>
 
+    <div class="file-picker">
+      <input
+        type="file"
+        ref="fileInput"
+        @change="handleFileSelect"
+        :disabled="loading"
+      />
+    </div>
+
+    <div v-if="selectedFile" class="selected-file-info">
+      <h4>Selected File Metadata</h4>
+      <div class="info-row">
+        <span class="label">Name:</span>
+        <code>{{ selectedFile.name }}</code>
+        <span v-if="selectedFile.originalName !== selectedFile.name" class="name-note">(sanitized)</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Content Type:</span>
+        <code>{{ selectedFile.contentType }}</code>
+      </div>
+      <div class="info-row">
+        <span class="label">Content Length:</span>
+        <code>{{ selectedFile.contentLength }} bytes</code>
+      </div>
+      <div class="info-row">
+        <span class="label">SHA-256:</span>
+        <code class="sha256">{{ selectedFile.sha256 || 'Computing...' }}</code>
+      </div>
+    </div>
+
     <div class="actions">
       <button class="primary" @click="listFiles">List Files</button>
-      <button class="success" @click="initiateUpload">Initiate Upload</button>
+      <button
+        class="success"
+        @click="initiateUpload"
+        :disabled="!selectedFile || !selectedFile.sha256 || loading"
+      >
+        {{ loading ? 'Uploading...' : 'Upload Selected File' }}
+      </button>
+      <button
+        v-if="selectedFile"
+        class="secondary"
+        @click="clearSelection"
+      >
+        Clear
+      </button>
     </div>
 
     <div class="files-info">
       <div v-if="loading" class="empty">Loading...</div>
       <div v-else-if="error" class="error">{{ error }}</div>
       <div v-else-if="uploadResult" class="upload-result">
+        <h4>{{ uploadResult.s3UploadComplete ? 'Upload Complete!' : 'Upload Initiated' }}</h4>
         <div class="info-row">
           <span class="label">File ID:</span>
           <code>{{ uploadResult.id || 'N/A' }}</code>
         </div>
         <div class="info-row">
-          <span class="label">Signed URL:</span>
-          <code>{{ uploadResult.signedUrl ? 'Received' : 'N/A' }}</code>
+          <span class="label">Status:</span>
+          <code :class="uploadResult.s3UploadComplete ? 'success' : ''">
+            {{ uploadResult.s3UploadComplete ? 'Uploaded to S3' : uploadResult.status }}
+          </code>
+        </div>
+        <div class="info-row">
+          <span class="label">S3 Key:</span>
+          <code class="sha256">{{ uploadResult.signedData?.key || 'N/A' }}</code>
         </div>
       </div>
       <div v-else-if="files.length > 0" class="files-list">
@@ -27,27 +77,86 @@
           <code class="file-id">{{ file.id }}</code>
         </div>
       </div>
-      <div v-else class="empty">No files</div>
+      <div v-else class="empty">Select a file to upload or list existing files</div>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
-import { useSdk } from '../composables/useSdk'
+import { useFoundation } from 'foundation-sdk/vue'
 
-const sdk = useSdk()
+const { files: filesService } = useFoundation()
 const loading = ref(false)
 const error = ref(null)
 const files = ref([])
 const uploadResult = ref(null)
+const selectedFile = ref(null)
+const fileInput = ref(null)
+const rawFile = ref(null)
+
+async function computeSHA256(file) {
+  const arrayBuffer = await file.arrayBuffer()
+  const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer)
+  const hashArray = new Uint8Array(hashBuffer)
+  let binary = ''
+  hashArray.forEach(byte => binary += String.fromCharCode(byte))
+  // Standard Base64 (not URL-safe) - S3 expects this format for integrity checks
+  const base64 = btoa(binary)
+  console.log('SHA-256 length:', base64.length, 'value:', base64)
+  return base64
+}
+
+function sanitizeFileName(name) {
+  // Replace spaces and invalid characters with underscores
+  // Allowed: a-zA-Z0-9!#$%&'*+.^_`|~-
+  return name.replace(/[^a-zA-Z0-9!#$%&'*+.^_`|~\-]/g, '_')
+}
+
+async function handleFileSelect(event) {
+  const file = event.target.files?.[0]
+  if (!file) {
+    selectedFile.value = null
+    rawFile.value = null
+    return
+  }
+
+  rawFile.value = file
+  error.value = null
+  uploadResult.value = null
+
+  selectedFile.value = {
+    name: sanitizeFileName(file.name),
+    originalName: file.name,
+    contentType: file.type || 'application/octet-stream',
+    contentLength: file.size,
+    sha256: null
+  }
+
+  try {
+    const sha256 = await computeSHA256(file)
+    selectedFile.value.sha256 = sha256
+  } catch (e) {
+    error.value = `Failed to compute SHA-256: ${e.message}`
+  }
+}
+
+function clearSelection() {
+  selectedFile.value = null
+  rawFile.value = null
+  uploadResult.value = null
+  error.value = null
+  if (fileInput.value) {
+    fileInput.value.value = ''
+  }
+}
 
 async function listFiles() {
   loading.value = true
   error.value = null
   uploadResult.value = null
   try {
-    const result = await sdk.files.list({ limit: 10 })
+    const result = await filesService.list({ limit: 10 })
     files.value = result?.items || []
   } catch (e) {
     error.value = e.message
@@ -57,18 +166,31 @@ async function listFiles() {
 }
 
 async function initiateUpload() {
+  if (!selectedFile.value || !selectedFile.value.sha256 || !rawFile.value) {
+    error.value = 'Please select a file first'
+    return
+  }
+
   loading.value = true
   error.value = null
   files.value = []
+
+  console.log('Uploading file via parent:', selectedFile.value.name)
+
   try {
-    const result = await sdk.files.initiate({
-      name: 'test-file.txt',
-      contentType: 'text/plain',
-      contentLength: 1024
+    // Upload through parent container (handles presigned URL + S3 upload)
+    const result = await filesService.upload({
+      name: selectedFile.value.name,
+      contentType: selectedFile.value.contentType,
+      file: rawFile.value,
+      sha256: selectedFile.value.sha256
     })
+
+    console.log('Upload complete:', result)
     uploadResult.value = result
   } catch (e) {
     error.value = e.message
+    console.error('Upload error:', e)
   } finally {
     loading.value = false
   }
@@ -84,6 +206,69 @@ async function initiateUpload() {
   color: var(--text-muted);
   font-size: 0.875rem;
   margin-bottom: 1rem;
+}
+
+.file-picker {
+  margin-bottom: 1rem;
+}
+
+.file-picker input[type="file"] {
+  width: 100%;
+  padding: 0.5rem;
+  border: 2px dashed var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  cursor: pointer;
+}
+
+.file-picker input[type="file"]:hover {
+  border-color: var(--primary);
+}
+
+.selected-file-info {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.selected-file-info h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.sha256 {
+  word-break: break-all;
+  font-size: 0.65rem !important;
+}
+
+.name-note {
+  font-size: 0.75rem;
+  color: var(--warning, #f59e0b);
+  margin-left: 0.5rem;
+}
+
+button.secondary {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+button.secondary:hover {
+  background: var(--border);
+}
+
+.upload-result h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.875rem;
+  color: var(--success);
+}
+
+code.success {
+  color: var(--success);
+  font-weight: 600;
 }
 
 .actions {
