@@ -8,7 +8,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "foundation-sdk": "^0.1.1",
+    "foundation-sdk": "^0.1.12",
     "vue": "^3.4.0"
   },
   "devDependencies": {
