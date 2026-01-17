@@ -87,8 +87,9 @@ async function loadTodos() {
 
   try {
     const result = await stuff.list(TODO_KEY)
-    // Map stuff items to todo format
-    todos.value = (result || []).map(item => ({
+    // Handle both array and object formats (API may return { items: [] })
+    const items = Array.isArray(result) ? result : (result?.items || [])
+    todos.value = items.map(item => ({
       id: item.namespace,
       title: item.value?.title || '',
       done: item.value?.completed || false
