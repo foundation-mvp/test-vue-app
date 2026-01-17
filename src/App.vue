@@ -27,11 +27,30 @@
 </template>
 
 <script setup>
+import { watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useFoundation } from 'foundation-sdk/vue'
 import ThemeIndicator from './components/ThemeIndicator.vue'
 import UserMenu from './components/UserMenu.vue'
 
 const foundation = useFoundation()
+const vueRouter = useRouter()
+
+// Sync SDK router changes to vue-router
+// When parent container URL changes, SDK broadcasts ROUTER_CHANGED
+// We need to sync that to vue-router so the correct view renders
+watch(
+  () => foundation.routerPath.value,
+  (newPath) => {
+    if (newPath && vueRouter.currentRoute.value.path !== newPath) {
+      vueRouter.replace({
+        path: newPath,
+        query: foundation.routerQuery.value,
+        hash: foundation.routerHash.value
+      })
+    }
+  }
+)
 </script>
 
 <style>
