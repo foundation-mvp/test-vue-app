@@ -1,7 +1,15 @@
 <template>
   <div class="app" :class="{ dark: foundation.isDark.value }">
     <header class="header">
-      <h1>My Vue App</h1>
+      <div class="header-left">
+        <h1>My Vue App</h1>
+        <nav class="nav">
+          <router-link to="/" class="nav-link" :class="{ active: $route.path === '/' }">Home</router-link>
+          <router-link to="/files" class="nav-link" :class="{ active: $route.path === '/files' }">Files</router-link>
+          <router-link to="/todos" class="nav-link" :class="{ active: $route.path === '/todos' }">Todos</router-link>
+          <router-link to="/websocket" class="nav-link" :class="{ active: $route.path === '/websocket' }">WebSocket</router-link>
+        </nav>
+      </div>
       <div class="header-right">
         <ThemeIndicator />
         <UserMenu />
@@ -13,37 +21,7 @@
         Connecting to platform...
       </div>
 
-      <template v-else>
-        <section class="section">
-          <h2>Welcome, {{ foundation.currentUser?.name || foundation.currentUser?.email || 'User' }}</h2>
-          <p class="muted">This Vue app uses the Foundation SDK for auth, data, and UI.</p>
-          <pre class="user-data">{{ JSON.stringify(foundation.currentUser, null, 2) }}</pre>
-        </section>
-
-        <section class="section">
-          <RouterDemo />
-        </section>
-
-        <section class="section">
-          <BannerDemo />
-        </section>
-
-        <section class="section">
-          <EntityEventsDemo />
-        </section>
-
-        <section class="section">
-          <FilesDemo />
-        </section>
-
-        <section class="section">
-          <TodoList />
-        </section>
-
-        <section class="section">
-          <NotificationDemo />
-        </section>
-      </template>
+      <router-view v-else />
     </main>
   </div>
 </template>
@@ -52,12 +30,6 @@
 import { useFoundation } from 'foundation-sdk/vue'
 import ThemeIndicator from './components/ThemeIndicator.vue'
 import UserMenu from './components/UserMenu.vue'
-import TodoList from './components/TodoList.vue'
-import NotificationDemo from './components/NotificationDemo.vue'
-import RouterDemo from './components/RouterDemo.vue'
-import BannerDemo from './components/BannerDemo.vue'
-import EntityEventsDemo from './components/EntityEventsDemo.vue'
-import FilesDemo from './components/FilesDemo.vue'
 
 const foundation = useFoundation()
 </script>
@@ -107,9 +79,39 @@ body {
   border-bottom: 1px solid var(--border);
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
 .header h1 {
   font-size: 1.25rem;
   font-weight: 600;
+}
+
+.nav {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.nav-link {
+  padding: 0.375rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  text-decoration: none;
+  color: var(--text-muted);
+  transition: background 0.15s, color 0.15s;
+}
+
+.nav-link:hover {
+  background: var(--border);
+  color: var(--text);
+}
+
+.nav-link.active {
+  background: var(--primary);
+  color: white;
 }
 
 .header-right {
@@ -119,9 +121,7 @@ body {
 }
 
 .main {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 1.5rem;
+  flex: 1;
 }
 
 .section {

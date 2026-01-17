@@ -19,10 +19,10 @@
     </div>
 
     <div class="actions">
-      <button class="primary" @click="pushDemo">Push /demo</button>
-      <button class="primary" @click="pushWithQuery">Push with Query</button>
-      <button class="secondary" @click="replaceHome">Replace /home</button>
-      <button class="secondary" @click="setQueryParams">Set Query</button>
+      <button class="primary" @click="pushFiles">Push /files</button>
+      <button class="primary" @click="pushTodosWithQuery">Push /todos with Query</button>
+      <button class="secondary" @click="pushWebSocket">Push /websocket</button>
+      <button class="secondary" @click="replaceHome">Replace /</button>
     </div>
 
     <div v-if="lastAction" class="last-action">
@@ -50,20 +50,28 @@ onUnmounted(() => {
   if (unsubscribe) unsubscribe()
 })
 
-async function pushDemo() {
+async function pushFiles() {
   try {
-    const id = Date.now().toString(36)
-    await router.push(`/demo/${id}`)
-    lastAction.value = `Pushed /demo/${id}`
+    await router.push('/files')
+    lastAction.value = 'Pushed /files'
   } catch (e) {
     lastAction.value = `Error: ${e.message}`
   }
 }
 
-async function pushWithQuery() {
+async function pushTodosWithQuery() {
   try {
-    await router.push('/tasks', { query: { filter: 'active', page: '1' } })
-    lastAction.value = 'Pushed /tasks with query'
+    await router.push('/todos', { query: { filter: 'active', page: '1' } })
+    lastAction.value = 'Pushed /todos with query'
+  } catch (e) {
+    lastAction.value = `Error: ${e.message}`
+  }
+}
+
+async function pushWebSocket() {
+  try {
+    await router.push('/websocket')
+    lastAction.value = 'Pushed /websocket'
   } catch (e) {
     lastAction.value = `Error: ${e.message}`
   }
@@ -71,17 +79,8 @@ async function pushWithQuery() {
 
 async function replaceHome() {
   try {
-    await router.replace('/home')
-    lastAction.value = 'Replaced with /home (no history)'
-  } catch (e) {
-    lastAction.value = `Error: ${e.message}`
-  }
-}
-
-async function setQueryParams() {
-  try {
-    await router.setQuery({ status: 'completed', sort: 'date' })
-    lastAction.value = 'Set query params'
+    await router.replace('/')
+    lastAction.value = 'Replaced with / (no history)'
   } catch (e) {
     lastAction.value = `Error: ${e.message}`
   }

@@ -1,7 +1,7 @@
 <template>
   <div class="entity-events-demo">
-    <h3>Entity Events (Real-time)</h3>
-    <p class="description">Listen for WebSocket entity changes</p>
+    <h3>WebSocket Messages (Real-time)</h3>
+    <p class="description">Listen for all WebSocket messages from container</p>
 
     <div class="actions">
       <button :class="listening ? 'danger' : 'primary'" @click="toggleListener">
@@ -15,41 +15,59 @@
         Listener inactive
       </div>
       <div v-else-if="listening && events.length === 0" class="empty">
-        Listening for entity changes...
+        Listening for all messages...
       </div>
       <div v-for="(event, i) in events" :key="i" class="event-entry">
-        <span class="change-type">{{ event.changeType }}</span>
-        <span class="entity">{{ event.entityId }}/{{ event.id }}</span>
+        <span class="message-type">{{ event.type }}</span>
+        <pre class="message-data">{{ JSON.stringify(event.data, null, 2) }}</pre>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onUnmounted } from 'vue'
-import { useFoundation } from 'foundation-sdk/vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 
-const { onEntityChange } = useFoundation()
 const listening = ref(false)
 const events = ref([])
-let unsubscribe = null
+let messageHandler = null
+
+function handleMessage(event) {
+  const message = event.data
+
+  // Only process messages that look like they're from our container
+  if (!message || typeof message !== 'object' || !message.type) {
+    return
+  }
+
+  // Log all messages to console
+  console.log('[WebSocket Message]', message.type, message.data || message)
+
+  // Add to events list
+  events.value.unshift({
+    type: message.type,
+    data: message.data,
+    timestamp: new Date().toISOString()
+  })
+
+  // Keep only last 20 events
+  if (events.value.length > 20) {
+    events.value.pop()
+  }
+}
 
 function toggleListener() {
   if (listening.value) {
-    if (unsubscribe) {
-      unsubscribe()
-      unsubscribe = null
+    if (messageHandler) {
+      window.removeEventListener('message', messageHandler)
+      messageHandler = null
     }
     listening.value = false
   } else {
-    unsubscribe = onEntityChange((event) => {
-      events.value.unshift(event)
-      // Keep only last 10 events
-      if (events.value.length > 10) {
-        events.value.pop()
-      }
-    })
+    messageHandler = handleMessage
+    window.addEventListener('message', messageHandler)
     listening.value = true
+    console.log('[WebSocket Listener] Started listening for all messages')
   }
 }
 
@@ -58,7 +76,9 @@ function clearEvents() {
 }
 
 onUnmounted(() => {
-  if (unsubscribe) unsubscribe()
+  if (messageHandler) {
+    window.removeEventListener('message', messageHandler)
+  }
 })
 </script>
 
@@ -84,7 +104,7 @@ onUnmounted(() => {
   border-radius: 6px;
   padding: 0.5rem;
   min-height: 60px;
-  max-height: 120px;
+  max-height: 300px;
   overflow-y: auto;
   font-family: monospace;
   font-size: 0.75rem;
@@ -96,20 +116,33 @@ onUnmounted(() => {
 }
 
 .event-entry {
-  padding: 0.25rem 0;
+  padding: 0.5rem;
   border-bottom: 1px solid var(--border);
+  margin-bottom: 0.5rem;
 }
 
 .event-entry:last-child {
   border-bottom: none;
+  margin-bottom: 0;
 }
 
-.change-type {
-  color: var(--success);
-  margin-right: 0.5rem;
+.message-type {
+  color: var(--primary);
+  font-weight: bold;
+  display: block;
+  margin-bottom: 0.25rem;
 }
 
-.entity {
+.message-data {
   color: var(--text);
+  background: var(--bg-card);
+  padding: 0.5rem;
+  border-radius: 4px;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-size: 0.7rem;
+  max-height: 100px;
+  overflow-y: auto;
 }
 </style>
