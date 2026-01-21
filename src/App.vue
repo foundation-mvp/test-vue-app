@@ -32,7 +32,7 @@ import ThemeIndicator from './components/ThemeIndicator.vue'
 import UserMenu from './components/UserMenu.vue'
 
 const foundation = useFoundation()
-const vueRouter = useRouter()
+// const vueRouter = useRouter()
 
 // Sync SDK router changes to vue-router
 // When parent container URL changes, SDK broadcasts ROUTER_CHANGED
