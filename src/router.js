@@ -3,6 +3,7 @@ import HomePage from './views/HomePage.vue'
 import FilesPage from './views/FilesPage.vue'
 import TodosPage from './views/TodosPage.vue'
 import WebSocketPage from './views/WebSocketPage.vue'
+import AccountPage from './views/AccountPage.vue'
 
 const routes = [
   {
@@ -24,6 +25,11 @@ const routes = [
     path: '/websocket',
     name: 'websocket',
     component: WebSocketPage
+  },
+  {
+    path: '/account',
+    name: 'account',
+    component: AccountPage
   }
 ]
 

@@ -8,6 +8,7 @@
           <router-link to="/files" class="nav-link" :class="{ active: $route.path === '/files' }">Files</router-link>
           <router-link to="/todos" class="nav-link" :class="{ active: $route.path === '/todos' }">Todos</router-link>
           <router-link to="/websocket" class="nav-link" :class="{ active: $route.path === '/websocket' }">WebSocket</router-link>
+          <router-link to="/account" class="nav-link" :class="{ active: $route.path === '/account' }">Account</router-link>
         </nav>
       </div>
       <div class="header-right">

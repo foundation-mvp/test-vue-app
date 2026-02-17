@@ -32,7 +32,7 @@
 
       <div
         v-for="todo in todos"
-        :key="todo.id"
+        :key="todo.key"
         class="todo-item"
         :class="{ done: todo.done }"
       >
@@ -60,20 +60,9 @@
 import { ref, onMounted } from 'vue'
 import { useFoundation } from 'foundation-sdk/vue'
 
-const { stuff, ui, log } = useFoundation()
+const { db, ui, log } = useFoundation()
 
-// Simple nanoid-like generator
-function nanoid(size = 21) {
-  const alphabet = 'useandom-26T198340PX75pxJACKVERYMINDBUSHWOLF_GQZbfghjklqvwyzrict'
-  let id = ''
-  const bytes = crypto.getRandomValues(new Uint8Array(size))
-  for (let i = 0; i < size; i++) {
-    id += alphabet[bytes[i] & 63]
-  }
-  return id
-}
-
-const TODO_KEY = 'todos'
+const KEY_PREFIX = 'todo:'
 
 const todos = ref([])
 const newTitle = ref('')
@@ -81,19 +70,27 @@ const loading = ref(false)
 const adding = ref(false)
 const error = ref(null)
 
+function makeKey() {
+  return `${KEY_PREFIX}${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+function parseTodo(item) {
+  const val = typeof item.value === 'string' ? JSON.parse(item.value) : item.value
+  return {
+    key: item.key,
+    title: val.title || '',
+    done: val.completed || false
+  }
+}
+
 async function loadTodos() {
   loading.value = true
   error.value = null
 
   try {
-    const result = await stuff.list(TODO_KEY)
-    // Handle both array and object formats (API may return { items: [] })
+    const result = await db.list('stuff', { filters: { keyPrefix: KEY_PREFIX } })
     const items = Array.isArray(result) ? result : (result?.items || [])
-    todos.value = items.map(item => ({
-      id: item.namespace,
-      title: item.value?.title || '',
-      done: item.value?.completed || false
-    }))
+    todos.value = items.map(parseTodo)
   } catch (e) {
     error.value = `Failed to load todos: ${e.message}`
     log.error('Failed to load todos', { error: e.message })
@@ -108,23 +105,22 @@ async function addTodo() {
   adding.value = true
   error.value = null
 
-  const namespace = nanoid()
-  const todoValue = {
-    title: newTitle.value.trim(),
-    completed: false
-  }
-
   try {
-    await stuff.set(TODO_KEY, namespace, todoValue)
-    todos.value.unshift({
-      id: namespace,
-      title: todoValue.title,
-      done: todoValue.completed
+    const key = makeKey()
+    const value = { title: newTitle.value.trim(), completed: false }
+
+    const result = await db.create('stuff', {
+      key,
+      value: JSON.stringify(value),
+      type: 'object',
+      expires: 0
     })
+
+    todos.value.unshift(parseTodo(result))
     newTitle.value = ''
 
     ui.toast('Todo added!', 'success')
-    log.event('todo_created', { title: todoValue.title })
+    log.event('todo_created', { title: value.title })
   } catch (e) {
     error.value = `Failed to add todo: ${e.message}`
     ui.toast('Failed to add todo', 'error')
@@ -138,12 +134,12 @@ async function toggleTodo(todo) {
   todo.done = newDone // Optimistic update
 
   try {
-    await stuff.set(TODO_KEY, todo.id, {
-      title: todo.title,
-      completed: newDone
+    const value = { title: todo.title, completed: newDone }
+    await db.update('stuff', {
+      key: todo.key,
+      value: JSON.stringify(value)
     })
-
-    log.event('todo_toggled', { id: todo.id, done: newDone })
+    log.event('todo_toggled', { key: todo.key, done: newDone })
   } catch (e) {
     todo.done = !newDone // Revert
     ui.toast('Failed to update todo', 'error')
@@ -158,9 +154,9 @@ async function deleteTodo(todo) {
   todos.value.splice(idx, 1) // Optimistic
 
   try {
-    await stuff.delete(TODO_KEY, todo.id)
+    await db.delete('stuff', { key: todo.key })
     ui.toast('Todo deleted', 'success')
-    log.event('todo_deleted', { id: todo.id })
+    log.event('todo_deleted', { key: todo.key })
   } catch (e) {
     todos.value.splice(idx, 0, todo) // Revert
     ui.toast('Failed to delete todo', 'error')
