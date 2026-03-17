@@ -1,6 +1,6 @@
 {
-  "buildCommand": "npm run build",
-  "outputDir": "dist",
-  "entryPoint": "index.html",
-  "sdkVersion": "^1.0.0"
+  "build": "npm run build",
+  "files": "dist",
+  "entry": "index.html",
+  "sdk": "^1.0.0"
 }
