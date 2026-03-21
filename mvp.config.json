@@ -1,5 +1,5 @@
 {
-  "build": "npm run build",
+  "build": "npm install && npm run build",
   "files": "dist",
   "entry": "index.html",
   "sdk": "^1.0.0"
